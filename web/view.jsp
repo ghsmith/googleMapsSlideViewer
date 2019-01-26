@@ -7,7 +7,10 @@
 <html>
 <head>
   <title>Slide Viewer</title>
-  <script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3&sensor=false"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="http://maps.google.com/maps/api/js?key=AIzaSyC1NDnSq8uOABRmuNz7tK9dwh4e6-MSmoo&v=3"></script>
   <script type="text/javascript">
 
     var url = window.location.href;
@@ -26,6 +29,10 @@
         xhair.setPosition(slideMap.getCenter());
       }
       thumbnailMapMoving = false;
+      var p = slideMap.getProjection().fromLatLngToPoint(slideMap.getCenter());
+      $("#x").text(Math.round(p.x));
+      $("#y").text(Math.round(p.y));
+      $("#z").text(slideMap.getZoom());
     }
 
     function thumbnailMapClick(latLng) {
@@ -125,7 +132,8 @@
         mapTypeControl: false,
         scaleControl: false,
         streetViewControl: false,
-        overviewMapControl: false
+        overviewMapControl: false,
+        fullscreenControl: false
       };
       thumbnailMap = new google.maps.Map(document.getElementById("thumbnailMap"), thumbnailMapOptions);
       thumbnailMap.mapTypes.set("thumbnail", thumbnailMapType);
@@ -157,7 +165,59 @@
           else if(slideMap.getZoom() == 9) { document.getElementById("objectivePower").innerHTML = "40x"; document.getElementById("objectivePower").style.backgroundColor = "blue"; }
       });
   
-  }
+    }
+
+    var autoMode = true;
+    var zoomSeq = [3, 4, 5, 6, 7, 8, 7, 6, 5, 4];
+    var zoomSeqIndex = 0;
+    var panByX = 0;
+    var panByY = 0;
+    var panCount = 0;
+ 
+    function robotPan() {
+      if(!autoMode) { setTimeout(robotPan, 1000); return; }
+      if(panCount == 0) {
+        var x = Math.floor(Math.random() * 3);
+        if(x == 0) { panByX = -1; }
+        else if(x == 1) { panByX = 0; }
+        else if(x == 2) { panByX = 1; }
+        var y = Math.floor(Math.random() * 3);
+        if(y == 0) { panByY = -1; }
+        else if(y == 1) { panByY = 0; }
+        else if(y == 2) { panByY = 1; }
+      }
+      if(panCount < 500) {
+        panCount++;
+        slideMap.panBy(panByX, panByY);
+        setTimeout(robotPan, 20);
+      }
+      else {
+        panCount = 0;
+        setTimeout(robotZoom, 2000);
+      }
+      return;
+    }
+
+    function robotZoom() {
+      if(!autoMode) { setTimeout(robotZoom, 1000); return; }
+      zoomSeqIndex = zoomSeqIndex < zoomSeq.length - 1 ? zoomSeqIndex + 1: 0;
+      slideMap.setZoom(zoomSeq[zoomSeqIndex]);
+      setTimeout(robotPan, 2000);
+      return;
+    }
+
+    var timeout = null;
+    $(document).on('mousemove', function() {
+      autoMode = false;
+      $("#mode").hide();
+      if(timeout != null) {
+        clearTimeout(timeout);
+      }
+      timeout = setTimeout(function() {
+        autoMode = true;
+        $("#mode").show();
+      }, 10000);
+    });
 
   </script>
   <style type="text/css">
@@ -204,14 +264,46 @@
       font-weight: bold;
     }
     
+    #coords {
+      position: absolute;
+      left: 0px;
+      bottom: 50px;
+      width: 50px;
+      height: 30px;
+      color: black;
+      background-color: yellow;
+      text-align: left;
+      font-size: xx-small;
+      font-weight: normal;
+    }
+
+    #mode {
+      position: absolute;
+      left: 50%;
+      bottom: 50px;
+      margin-left: -300px;
+      width: 600px;
+      height: 30px;
+      color: black;
+      background-color: yellow;
+      text-align: center;
+      font-size: x-large;
+      font-weight: bold;
+    }
   </style>
 </head>
-<body onload="{ initialize(); }">
+<body onload="{ initialize(); robotPan(); }">
   <div id="mainContainer">
     <div id="slideMap" style="width: 100%; height: 100%;"></div>
   </div>
   <div id="thumbnailMap"></div>
   <div id="thumbnailBlank"></div>
   <div id="objectivePower">0.6x</div>
+  <div id="coords">
+    X:<span id="x"></span><br/>
+    Y:<span id="y"></span><br/>
+    Z:<span id="z"></span>
+  </div>
+  <div id="mode">touch screen to take control</div>
 </body>
 </html>
